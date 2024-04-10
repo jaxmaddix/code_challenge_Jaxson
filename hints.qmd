@@ -25,7 +25,7 @@ format:
 ## Mock up of grouped bar chart
 
 * have 3 groups
-* have 5 values per group
+* have same values per group
 * make up data
 
 ```{r warnings = FALSE, message = FALSE}
