@@ -1,0 +1,278 @@
+---
+title: "Final Code"
+author: "Jaxson Freund"
+format: html
+editor: visual
+---
+
+```{R, echo = FALSE, include = FALSE}
+### Packages used
+library(readr)
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(reshape2)
+```
+
+## Past Data
+
+```{R, echo = FALSE, include = FALSE}
+# read in bps_model_number_name which contains the model code associated with each BPS
+bps_model_number_name <- read_csv("input_data/bps_model_number_name.csv")
+
+# convert to a df
+bps_model_names <-as.data.frame(bps_model_number_name)
+
+# Filter by keyword containing "ozark-ouachita" in the first column
+model_codes <- bps_model_names[grepl("Ozark-Ouachita", bps_model_number_name$BpS_Name), ]
+
+# Remove the 3rd and 4th rows from the model_codes data frame because they are not the right ecosystems
+model_codes <- model_codes[-c(2, 3), ]
+```
+
+```{R, echo = FALSE, include = FALSE}
+# Read in ref_con_modified which contains the past percentages for each succession class, arranged by model code
+ref_con_modified <- read_csv("input_data/ref_con_modified.csv")
+
+# convert to df
+ref_con_modified_df <- as.data.frame(ref_con_modified)
+
+# filter based on the relevant model codes from bps_model_number_name
+ref_con_modified_df <- ref_con_modified_df[ref_con_modified_df$Model_Code %in% model_codes$Model_Code, ]
+
+# remove non-relevant columns
+past_df <- ref_con_modified_df[, -c(1, 9)]
+
+# switch the columns to be in the correct order
+temp_col_6 <- past_df[, 6]
+temp_col_7 <- past_df[, 7]
+temp_col_8 <- past_df[, 8]
+temp_col_9 <- past_df[, 9]
+
+past_df[, 6] <- temp_col_8
+past_df[, 7] <- temp_col_9
+past_df[, 8] <- temp_col_6
+past_df[, 9] <- temp_col_7
+
+# rename the columns to the correct names
+agriculture_name <- names(past_df)[6]
+names(past_df)[6] <- names(past_df)[8]
+names(past_df)[8] <- agriculture_name
+
+developed_name <- names(past_df)[7]
+names(past_df)[7] <- names(past_df)[9]
+names(past_df)[9] <- developed_name
+```
+
+```{R}
+# extract the past percentages for each ecosystem from the filtered dataset
+past1 <- unlist(past_df[1, ])
+past2 <- unlist(past_df[3, ])
+past3 <- unlist(past_df[2, ])
+
+```
+
+## Present Data
+
+```{R, echo = FALSE, include = FALSE}
+# read in combine_raw, which has the freq of each succession class (corrosponding Var2) for different ecosystems (corrosponding Var1)
+combine_raw <- read_csv("input_data/combine_raw.csv")
+
+# read in bps_aoi_attributes, which lists the corrosponding Var2 for each ecosystem in column VALUE
+bps_aoi_attributes <- read_csv("input_data/bps_aoi_attributes.csv")
+
+# convert to df
+bps_aoi_attributes <-as.data.frame(bps_aoi_attributes)
+
+# extract the model code for the relevant ecosystems from the previously created model_codes df
+model_codes_column1 <- model_codes$BpS_Name
+
+# filter bps_aoi_attributes based on the values in BPS_NAME that corrrospond to the relevant model codes
+bps_aoi_attributes_filtered <- bps_aoi_attributes[bps_aoi_attributes$BPS_NAME %in% model_codes_column1, ]
+
+# remove irrelevant columns, keeping only the value, bps name, and model code
+bps_aoi_attributes_filtered <- bps_aoi_attributes_filtered[, c(2, 6, 7)]
+```
+
+```{R, echo = FALSE, include = FALSE}
+# find the relevant value for the ecosystem and assign it to a vector
+dry_mesic_value <- c(2132)
+
+# filter combine_raw for rows where Var1 is the correct value for the ecosystem
+dry_mesic_freq_combine <- combine_raw[combine_raw$Var1 %in% dry_mesic_value, ]
+```
+
+```{R, echo = FALSE, include = FALSE}
+# repeat for the second ecosystem
+pine_bluestem_value <- c(2160)
+
+pine_bluestem_freq_combine <- combine_raw[combine_raw$Var1 %in% pine_bluestem_value, ]
+```
+
+```{R, echo = FALSE, include = FALSE}
+# repeat for the third ecosystem
+pine_oak_value <- c(2141)
+
+pine_oak_freq_combine <- combine_raw[combine_raw$Var1 %in% pine_oak_value, ]
+```
+
+```{R, echo = FALSE, include = FALSE}
+# reaad in sclso_aoi_attributes, which lists the corrosponding values for each succession class
+scls_aoi_attributes <- read_csv("input_data/scls_aoi_attributes.csv")
+
+# extract the label column (succession classes)
+label1 <- scls_aoi_attributes$LABEL
+
+# extract the value column (corrosponding numbers)
+value1 <- scls_aoi_attributes$VALUE
+
+# create a df of the succession classes and corrosponding values
+label_value1 <- data.frame(
+  LABEL = label1,
+  VALUE = value1
+)
+
+# remove irrelevant rows
+label_value1 <- label_value1[-c(8, 10),]
+
+# rearrange rows into the correct order
+row8 <- label_value1[8, ]
+row9 <- label_value1[9, ]
+
+label_value1[8, ] <- row9
+label_value1[9, ] <- row8
+```
+
+```{R, echo = FALSE, include = FALSE}
+# store the original order of rows in the df
+original_order <- seq_len(nrow(label_value1))
+
+# merge the succession classes into the df containing freq of dry_mesic
+dry_mesic <- merge(label_value1, dry_mesic_freq_combine[, c("Var2", "Freq")], by.x = "VALUE", by.y = "Var2", all.x = TRUE, sort = FALSE)
+
+# convert the NA to 0
+dry_mesic[is.na(dry_mesic)] <- 0
+
+# sort the df based on the original order of succession classes
+dry_mesic <- dry_mesic[match(original_order, match(dry_mesic$VALUE, label_value1$VALUE)), ]
+
+# add all of the freq
+total_freq <- sum(dry_mesic$Freq, na.rm = TRUE)
+
+# create a new column of present percents in the ecosystem by dividing each freq by the total freq
+dry_mesic$Percent <- dry_mesic$Freq / total_freq * 100
+
+
+# repeat for second ecosystem
+pine_bluestem <- merge(label_value1, pine_bluestem_freq_combine[, c("Var2", "Freq")], by.x = "VALUE", by.y = "Var2", all.x = TRUE, sort = FALSE)
+
+pine_bluestem[is.na(pine_bluestem)] <- 0
+
+pine_bluestem <- pine_bluestem[match(original_order, match(pine_bluestem$VALUE, label_value1$VALUE)), ]
+
+total_freq <- sum(pine_bluestem$Freq, na.rm = TRUE)
+
+pine_bluestem$Percent <- pine_bluestem$Freq / total_freq * 100
+
+
+# repeat for third ecosystem
+pine_oak <- merge(label_value1, pine_oak_freq_combine[, c("Var2", "Freq")], by.x = "VALUE", by.y = "Var2", all.x = TRUE)
+
+pine_oak[is.na(pine_oak)] <- 0
+
+pine_oak <- pine_oak[match(original_order, match(pine_oak$VALUE, label_value1$VALUE)), ]
+
+total_freq <- sum(pine_oak$Freq, na.rm = TRUE)
+
+pine_oak$Percent <- pine_oak$Freq / total_freq * 100
+
+```
+
+```{R}
+# extract the present percents for each ecosystem as vectors
+present1 <- dry_mesic$Percent
+present2 <- pine_bluestem$Percent
+present3 <- pine_oak$Percent
+```
+
+### Labels
+
+```{R}
+# extract the succession class labels from the df
+succession_class <- label_value1$LABEL
+```
+
+### Graph
+
+```{R, echo = FALSE}
+# Convert succession_class to factor with unique levels
+succession_class <- factor(succession_class, levels = unique(succession_class))
+
+# Reverse the order of levels so they appear top down
+succession_class <- factor(succession_class, levels = rev(levels(succession_class)))
+```
+
+```{R, echo = FALSE}
+# repeatt the succession class labels enough times for each bar
+succession_class_27 <- rep(succession_class, times = 6)
+
+# repeat the past and present labels for each relevant bar
+time_27 <- c(rep("past_27", times = 27), rep("present_27", times = 27))
+
+# construct past and present vectors
+past_27 <- c(past1, past2, past3)
+present_27 <-c(present1, present2, present3)
+# combine the vectors into one vector of all percents in a specific order
+percent_27 <- c(past_27, present_27)
+
+# create labels of each ecosystem corresponding to each percent
+bps <- c(rep("Ozark-Ouachita Dry-Mesic Oak Forest", times = 9),
+         rep("Ozark-Ouachita Shortleaf Pine-Bluestem Woodland", times = 9),
+         rep("Ozark-Ouachita Shortleaf Pine-Oak Forest and Woodland", times = 9))
+# rep the labels for the past and present data
+bps_27 <- rep(bps, times = 2)
+
+# create a dataframe of each percent, and the corresponding succession class, ecosystem, and past/present
+data_27 <- data.frame(succession_class_27, time_27, percent_27, bps_27)
+```
+
+```{R, echo = FALSE}
+# make the ecosystem labels wrap if they get too long
+data_27$bps_27 <- str_wrap(data_27$bps_27, width = 25)
+
+# reorder the data so present values will be plotted as the top bars
+data_27$time_27 <- factor(data_27$time_27, levels = c("present_27", "past_27"))
+
+# define the colors to be used for the bars
+past_color <- rgb(48/255, 169/255, 82/255, 1)
+present_color <- rgb(61/255, 71/255, 63/255, 1)
+
+# set the ratio of width to height
+aspect_ratio <- 1.5
+
+# create the plot of past and present percentages of each succession class for each ecosystem
+ggplot(data_27, aes(x = succession_class_27, 
+                    y = percent_27, 
+                    fill = time_27)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge()) +
+  facet_wrap(~ bps_27, 
+             ncol = 3) +
+  labs(x = "", 
+       y = "Percent", 
+       title = "", 
+       caption = "Data from landfire.gov",) +
+  scale_fill_manual(values = c("past_27" = past_color, "present_27" = present_color), 
+                    name = "", 
+                    labels = c("Past", "Present")) +  
+  theme_minimal() +
+  coord_flip() +
+  theme(panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+        strip.background = element_rect(color = "black", fill = NA, linewidth = 1),
+        strip.text = element_text(color = "black"),
+        panel.spacing = unit(0, "lines"),
+        aspect.ratio = aspect_ratio
+)
+```
+
+### Reflections
