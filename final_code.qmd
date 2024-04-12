@@ -12,11 +12,14 @@ library(ggplot2)
 library(stringr)
 library(dplyr)
 library(reshape2)
+library(knitr)
+library(kableExtra)
 ```
 
 ## Past Data
 
 ```{R, echo = FALSE, include = FALSE}
+
 # read in bps_model_number_name which contains the model code associated with each BPS
 bps_model_number_name <- read_csv("input_data/bps_model_number_name.csv")
 
@@ -64,12 +67,29 @@ names(past_df)[7] <- names(past_df)[9]
 names(past_df)[9] <- developed_name
 ```
 
-```{R}
+```{R, echo = FALSE}
 # extract the past percentages for each ecosystem from the filtered dataset
 past1 <- unlist(past_df[1, ])
+past1 <- unname(past1)
 past2 <- unlist(past_df[3, ])
+past2 <- unname(past2)
 past3 <- unlist(past_df[2, ])
+past3 <- unname(past3)
+```
 
+Past for Dry-Mesic
+```{R, echo = FALSE}
+print(past1)
+```
+
+Past for Pine-Bluestem
+```{R, echo = FALSE}
+print(past2)
+```
+
+Past for Pine-Oak
+```{R, echo = FALSE}
+print(past3)
 ```
 
 ## Present Data
@@ -188,22 +208,77 @@ pine_oak$Percent <- pine_oak$Freq / total_freq * 100
 
 ```
 
-```{R}
+```{R, echo = FALSE}
 # extract the present percents for each ecosystem as vectors
 present1 <- dry_mesic$Percent
 present2 <- pine_bluestem$Percent
 present3 <- pine_oak$Percent
 ```
 
-### Labels
+Present for Dry-Mesic
+```{R, echo = FALSE}
+print(present1)
+```
 
-```{R}
+Present for Pine-Bluestem
+```{R, echo = FALSE}
+print(present2)
+```
+
+Present for Pine-Oak
+```{R, echo = FALSE}
+print(present3)
+```
+
+### Labels
+```{R, echo = FALSE}
 # extract the succession class labels from the df
 succession_class <- label_value1$LABEL
 ```
+Succession Classes
+```{R, echo = FALSE}
+print(succession_class)
+```
+
+### Test Graph
+Data Frame:
+```{R, echo = FALSE}
+past1_fake <- c(1, 2, 3, 4)  # Sample values for past1
+present1_fake <- c(5, 6, 7, 8)  # Sample values for present1
+past2_fake <- c(9, 10, 11, 12)  # Sample values for past2
+present2_fake <- c(13, 14, 15, 16)  # Sample values for present2
+past3_fake <- c(17, 18, 19, 20)  # Sample values for past3
+present3_fake <- c(21, 22, 23, 24)  # Sample values for present3
+
+succession_class_fake <- c("A", "B", "C", "D")  # Category labels
+
+succession_class_12<- rep(succession_class_fake, times = 3)
+past_12 <- c(past1_fake, past2_fake, past3_fake)
+present_12 <-c(present1_fake, present2_fake, present3_fake)
+
+data_12 <- data.frame(succession_class_12, past_12, present_12)
+
+melted_data_12 <- melt(data_12, id.vars = "succession_class_12")
+
+melted_data_12$ecosystem <- (c("ecosystem1", "ecosystem1", "ecosystem1", "ecosystem1",                
+                               "ecosystem2", "ecosystem2", "ecosystem2", "ecosystem2",                
+                               "ecosystem3", "ecosystem3", "ecosystem3", "ecosystem3",                
+                               "ecosystem1", "ecosystem1", "ecosystem1", "ecosystem1",                
+                               "ecosystem2", "ecosystem2", "ecosystem2", "ecosystem2",
+                               "ecosystem3", "ecosystem3", "ecosystem3", "ecosystem3"))
+
+kable(melted_data_12) %>%
+  kable_styling(font_size = 10)
+
+ggplot(melted_data_12, aes(x = succession_class_12, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  facet_wrap(~ ecosystem, ncol = 3) +
+  labs(x = "Succession Class", y = "Percent", title = "Mock Graph") +
+  theme_minimal() +
+  coord_flip()
+```
 
 ### Graph
-
 ```{R, echo = FALSE}
 # Convert succession_class to factor with unique levels
 succession_class <- factor(succession_class, levels = unique(succession_class))
@@ -211,13 +286,13 @@ succession_class <- factor(succession_class, levels = unique(succession_class))
 # Reverse the order of levels so they appear top down
 succession_class <- factor(succession_class, levels = rev(levels(succession_class)))
 ```
-
+Data Frame:
 ```{R, echo = FALSE}
-# repeatt the succession class labels enough times for each bar
+# repeat the succession class labels enough times for each bar
 succession_class_27 <- rep(succession_class, times = 6)
 
 # repeat the past and present labels for each relevant bar
-time_27 <- c(rep("past_27", times = 27), rep("present_27", times = 27))
+time_27 <- c(rep("past", times = 27), rep("present", times = 27))
 
 # construct past and present vectors
 past_27 <- c(past1, past2, past3)
@@ -233,7 +308,18 @@ bps <- c(rep("Ozark-Ouachita Dry-Mesic Oak Forest", times = 9),
 bps_27 <- rep(bps, times = 2)
 
 # create a dataframe of each percent, and the corresponding succession class, ecosystem, and past/present
-data_27 <- data.frame(succession_class_27, time_27, percent_27, bps_27)
+data_27 <- data.frame(bps_27, succession_class_27, time_27, percent_27)
+
+# change column labels for display
+new_column_labels <- c("Ecosystem", "Succession Class", "Time Period", "Percent Cover")
+old_column_labels <- colnames(data_27)
+colnames(data_27) <- new_column_labels
+
+kable(data_27) %>%
+  kable_styling(font_size = 10)
+
+# reset column labels
+colnames(data_27) <- old_column_labels
 ```
 
 ```{R, echo = FALSE}
@@ -241,7 +327,7 @@ data_27 <- data.frame(succession_class_27, time_27, percent_27, bps_27)
 data_27$bps_27 <- str_wrap(data_27$bps_27, width = 25)
 
 # reorder the data so present values will be plotted as the top bars
-data_27$time_27 <- factor(data_27$time_27, levels = c("present_27", "past_27"))
+data_27$time_27 <- factor(data_27$time_27, levels = c("present", "past"))
 
 # define the colors to be used for the bars
 past_color <- rgb(48/255, 169/255, 82/255, 1)
@@ -262,7 +348,7 @@ ggplot(data_27, aes(x = succession_class_27,
        y = "Percent", 
        title = "", 
        caption = "Data from landfire.gov",) +
-  scale_fill_manual(values = c("past_27" = past_color, "present_27" = present_color), 
+  scale_fill_manual(values = c("past" = past_color, "present" = present_color), 
                     name = "", 
                     labels = c("Past", "Present")) +  
   theme_minimal() +
@@ -275,4 +361,48 @@ ggplot(data_27, aes(x = succession_class_27,
 )
 ```
 
-### Reflections
+## Reflections
+
+### My Process
+I learned a lot about specific functions and how to approach tasks while attempting this challenge.  There were some times when I got stuck on specific problems, but I was eventually able to figure everything out.
+
+The two most difficult parts for me were figuring out how to combine the different datasets to construct the present percentages, and figuring out how to make the graph format correctly. 
+
+I didn't really know where to start with this challenge, so at first I started reading in the csv files to try to understand the data. It was pretty easy to understand how to get the past percentages, so I did that first. Then, I got stuck on trying to figure out how to get present values. I decided to take a break from that and try to make a mock-up of the graph using fake data. I found it helpful to use fake data because I could manipulate the data to understand how rstudio was populating the graph. This gave me an idea of what specific data I would need to find. 
+
+I found it helpful to filter the dataframes and print them while I was working, because I wanted to be able to view all of the data in a decluttered form.  I tended to only filter by rows because this allowed me to still see all of the potential types of data. I only filtered columns out in my final cleaned document.
+
+After I had read in all of the data, I had a really messy, non-ordered document. If I needed to use a specfic dataset again, it was really hard to remember which one contained the information I needed. To make my code organized, I made a new document where I first laid out sections for the different steps I would perform. I only populated in code after I had laid out a complete workflow. Then, I copied over only the necessary parts of code from my initial document. Initially, I printed all of my dataframes but once I finished a section and no longer needed to see it, I hide that section of code. This allowed me to focus on a specific problem I was working on without seeing eextraneous confusing information. I needed to reference Randy's hints to figure out how to get the present data because I couldn't see the connections between different datasets at first. However, once I understood which variables in specific datasets were connected to other datasets, I was able to get the present percents.
+
+Initially, I tried modifying Randy's graph code to use my data, but I ran into some issues with bar placement that I couldn't figure out how to fix. I decided to build the graph from the bottom up, changing one element at a time.  I made a mock graph so I could use unique numbers for each value in my graph, which allowed me to understand in what order rstudio filled the graph. The final product was quite complicated, but I started by adding one element at a time. First, I tried to make just one bar graph of past values for each succession class for one ecosystem. Then, I added in the present data. In this graph, I was able to make the past and present bars separate, which was the problem I had with my actual data.  Then, I made the plot 3 panes and included all three fake ecosystems. 
+
+To build the actual graph, I now understood how rstudio populated the graph, so I made a dataframe with the data in the same order as my fake data. Then, I was able to make minor aesthetic adjustments. 
+
+### Some things that worked well for me  
+* starting by exploring the datasets in a separate "messy" document, and only taking what I needed into my "clean" document
+* once I knew the structure of the data, creating a "clean" document with steps laid out
+* constructing a graph from the bottom-up, starting with a simple graph and adding more complex elements
+  * instead of starting with a complex code for a graph and trying to figure out which piece makes it do a wierd thing
+  * if something wierd happens, I know exactly which piece of code caused it so I can try to do it in a different way
+* making a fake graph with unique values so I can see how the graph populates based on the dataframe 
+
+### Some useful functions:
+* merge based on shared values in columns
+* filtering datasets
+* removing un-needed rows/columns
+* reordering rows/columns
+* unlist to store as a vector
+* seq_len to store original order 
+* match to sort based on original order
+* df[is.na(df)] <- 0 (set NA to 0)
+* sum
+* using arithmatics 
+* factor(df, levels = unique(df)) to make each value unique
+* factor(df, levels = rev(levels(df))) to reverse the values
+* rep(anything, times = 3) to repeat values
+* str_wrap to wrap an item if it gets too long
+* green <- rgb(48/255, 169/255, 82/255, 1) to define color
+* facet_wrap() to add 3 separate graphs
+* coord_flip() to flip the graph axes
+* theme elements for a border
+ 
